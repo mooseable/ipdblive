@@ -12,7 +12,6 @@ $config['db']['name']="dbname";
 $config['db']['t']['ip']="ips";
 $config['db']['t']['rep']="ipreports";
 $config['db']['t']['acc']="accounts";
-$config['db']['t']['log']="audit";
 
 $config['defs']['warn']=15;
 $config['defs']['crit']=15;

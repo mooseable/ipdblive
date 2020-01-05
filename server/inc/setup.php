@@ -6,7 +6,6 @@ if (!defined('IPDBL')){
 function run_setup($conn, $t, $email){
     $acc_t=$t['acc'];
     $ip_t=$t['ip'];
-    $log_t=$t['log'];
     $rep_t=$t['rep'];
     foreach ($t as $k=>$v){
         $sql = "DROP TABLE $v";
@@ -30,7 +29,7 @@ function run_setup($conn, $t, $email){
         die('error creating table '.$acc_t);
     }
     $sql="CREATE TABLE $ip_t (
-        ip VARBINARY(16) PRIMARY KEY,
+        ip VARBINARY(32) PRIMARY KEY,
         score TINYINT SIGNED,
         created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -42,28 +41,16 @@ function run_setup($conn, $t, $email){
     $sql="CREATE TABLE $rep_t (
         id int(8) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         acc_id int(8) UNSIGNED NOT NULL,
-        src_ip VARBINARY(16) NOT NULL,
+        src_ip VARBINARY(32) NOT NULL,
         svc_name VARCHAR(64),
         reason VARCHAR(256) NOT NULL,
         rating TINYINT UNSIGNED NOT NULL,
-        created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE INDEX ureporter (acc_id, src_ip)
         )
         ";
     if ($conn->query($sql) !== TRUE){
         die('error creating table '.$rep_t);
-    }
-    $sql="CREATE TABLE $log_t (
-        id INT(8) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        pubkey VARCHAR(32) NOT NULL,
-        privkey BINARY(20) NOT NULL,
-        email VARCHAR(128) NOT NULL UNIQUE,
-        is_admin BOOLEAN DEFAULT FALSE,
-        created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-        ";
-    if ($conn->query($sql) !== TRUE){
-        die('error creating table '.$log_t);
     }
 
     $pubk=gen_key();

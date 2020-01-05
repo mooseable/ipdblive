@@ -12,7 +12,6 @@ function route($conn, $method, $data, $auth, $userip, $config){
     } else {
         $ip=FALSE;
     }
-    audit_log($conn, $auth['uid'], preg_replace("/[^A-Za-z ]/", '', $method).':'.$ip, $userip, $tbl['log'] );
     switch($method) {
         case "GET":
             if ($data['job'] === 'cron' && $auth['admin']){
@@ -51,13 +50,13 @@ function route($conn, $method, $data, $auth, $userip, $config){
 }
 
 function get_all($conn, $t, $d) {
-    $sql = "SELECT ip, score from ".$t['ip']." WHERE score >= ".$d['warn']." AND updated > DATE_SUB(now(), INTERVAL 30 DAY)";
+    $sql = "SELECT INET6_NTOA(UNHEX(ip)) as ip, score from ".$t['ip']." WHERE score >= ".$d['warn']." AND updated > DATE_SUB(now(), INTERVAL 30 DAY)";
     $res = $conn->query($sql);
     $warn = array();
     $crit = array();
     $ban  = array();
     if ($res->num_rows > 0) {
-        while ($row = $res->mysqli_fetch_assoc()){
+        while ($row = mysqli_fetch_assoc($res)){
             if ($row['score'] >= $d['ban']){
                 $ban[] = $row['ip'];
             } elseif ($row['score'] >= $d['crit']) {
@@ -71,7 +70,7 @@ function get_all($conn, $t, $d) {
     return(array('code'=>404, 'response'=>null));
 }
 function get_single($conn, $ip, $t, $d){
-    $sql = "SELECT score from ".$t['ip']." WHERE ip='$ip' updated > DATE_SUB(now(), INTERVAL 30 DAY)";
+    $sql = "SELECT score from ".$t['ip']." WHERE ip=HEX(INET6_ATON($ip)) updated > DATE_SUB(now(), INTERVAL 30 DAY)";
     $res = $conn->query($sql);
     if ($res->num_rows > 0) {
         return(array('code'=>200, 'response'=>array('score'=>$row['score'])));
@@ -82,30 +81,37 @@ function post_single($conn, $data, $userip){
     return(array('code'=>501, 'response'=>null));
 }
 function set_single($conn, $ip, $score, $source, $reason, $ip_t, $rep_t){
-    $sql = "INSERT INTO $ip_t (ip, score) VALUES HEX(INET6_ATON('$ip')), $score ON DUPLICATE KEY UPDATE score=$score";
+    $sql = "INSERT INTO $ip_t (ip, score) VALUES INET6_ATON('$ip'), $score ON DUPLICATE KEY UPDATE score=$score";
     if ($conn->query($sql) === TRUE){
         return true;
     }
     return false;
 }
-function set_multiple($conn, $ips, $score, $source, $reason, $ip_t){
+function set_multiple($conn, $ips, $score, $source, $reason, $ip_t, $rep_t){
     $values = array();
+    $repvalues = array();
     foreach ($ips as $ip){
         $ip = trim($ip);
         if(filter_var($ip, FILTER_VALIDATE_IP)){
             $values[] = "(HEX(INET6_ATON('$ip')),$score)";
+            $repvalues[] = "(0,HEX(INET6_ATON('$ip')),'$reason',$score)";
         }
     }
     if (count($values)>0){
         $sql = "INSERT INTO $ip_t (ip, score) VALUES ".implode(",\r\n",$values)." ON DUPLICATE KEY UPDATE score=$score";
+        if ($conn->query($sql) !== TRUE){
+            echo 'sqlerr:';
+            return $conn->error;
+        }
+    }
+    if (count($values)>0){
+        $sql = "INSERT INTO $rep_t (acc_id, src_ip, reason, rating) VALUES ".implode(",\r\n",$repvalues)." ON DUPLICATE KEY UPDATE rating=$score";
         if ($conn->query($sql) === TRUE){
-            echo $sql;
             return true;
         }
-        echo 'sqlerr:';
+        echo 'sqlerr2:';
         return $conn->error;
     }
-    echo 'ips:';
     return $ips;
 }
 function put_single($conn, $data, $userip, $acc_t){
@@ -151,9 +157,4 @@ function delete_single($conn, $data, $userip, $acc_t){
         return(array('code'=>404, 'response'=>null));
     }
     return(array('code'=>500, 'response'=>null));
-}
-
-function audit_log($conn, $uid, $action, $userip, $audit_t){
-    $sql="INSERT INTO $audit_t ( uid, uip, action ) VALUES ( $uid, $userip, $action )";
-    $conn->query($sql);
 }

@@ -43,8 +43,11 @@ function ipabuse_check_ip($apikey, $ip){
 }
 
 function ipabuse_bl_download($apikey){
-    $curl = curl_init();
+    //$sampleip=file_get_contents('bl-inc/ipabusesample.txt');
+    //$badips = explode("\n",$sampleip);
+    //return array('source'=>'ipabusedb', 'ips'=>$badips);
 
+    $curl = curl_init();
     curl_setopt_array($curl, array(
     CURLOPT_URL => "https://api.abuseipdb.com/api/v2/blacklist?confidenceMinimum=90&plaintext",
     CURLOPT_RETURNTRANSFER => true,

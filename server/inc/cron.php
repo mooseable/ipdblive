@@ -6,26 +6,21 @@ if (!defined('IPDBL')){
 function do_cron($conn, $config){
     require_once('./bl-inc/ipabusedb.php');
     require_once('./bl-inc/talos.php');
-
+    $ipabusebl = ipabuse_bl_download($config['abusedbs']['abuseipdb']['apikey']);
+    //var_dump($ipabusebl);
+    if ($ipabusebl){
+        $ins=set_multiple($conn, $ipabusebl['ips'], 100, $ipabusebl['source'], 'high abuse score', $config['db']['t']['ip'], $config['db']['t']['rep']);
+        if (!$ins===true){
+            die(print_r($ins));
+        }
+    }
     $talosbl = talos_bl_download();
-    var_dump($talosbl);
     if ($talosbl){
-        $ins = set_multiple($conn, $talosbl['ips'], 100, $talosbl['source'], 'talos blacklist', $config['db']['t']['ip']);
+        $ins = set_multiple($conn, $talosbl['ips'], 100, $talosbl['source'], 'talos blacklist', $config['db']['t']['ip'], $config['db']['t']['rep']);
         if (!$ins===true){
             die($ins);
         }
     }
-    $ipabusebl = ipabuse_bl_download($config['abusedbs']['ipabusedb']['apikey']);
-    var_dump($ipabusebl);
-    if ($ipabusebl){
-        $ins=set_multiple($conn, $ipabusebl['ips'], 100, $ipabusebl['source'], 'high abuse score', $config['db']['t']['ip']);
-        if (!$ins===true){
-            die(var_dump($ins));
-        }
-    }
-    die('stop');
-    
-    
     return(array('code'=>200,'response'=>array('result'=>'ok')));
 }
 
